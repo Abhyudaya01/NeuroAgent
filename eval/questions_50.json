@@ -1,0 +1,252 @@
+[
+  {
+    "id": "memory_long_context_01",
+    "question": "What are the best recent approaches for long-context memory in LLM agents?",
+    "category": "memory"
+  },
+  {
+    "id": "memory_long_context_02",
+    "question": "How do retrieval-augmented memory and recurrent summarization differ in long-horizon agent tasks?",
+    "category": "memory"
+  },
+  {
+    "id": "memory_long_context_03",
+    "question": "When should an LLM agent use episodic memory instead of semantic memory?",
+    "category": "memory"
+  },
+  {
+    "id": "memory_long_context_04",
+    "question": "What are the tradeoffs between hierarchical memory and flat vector-store memory for agents?",
+    "category": "memory"
+  },
+  {
+    "id": "memory_long_context_05",
+    "question": "Which recent memory architectures are best for preserving long interaction history without exploding token cost?",
+    "category": "memory"
+  },
+  {
+    "id": "memory_long_context_06",
+    "question": "How should long-context memory systems for agents be evaluated beyond final answer quality?",
+    "category": "memory"
+  },
+  {
+    "id": "memory_long_context_07",
+    "question": "What makes hybrid retrieval-plus-summarization memory more effective than using only one of those strategies?",
+    "category": "memory"
+  },
+  {
+    "id": "memory_long_context_08",
+    "question": "What are the most promising recent approaches for balancing working memory and long-term memory in LLM agents?",
+    "category": "memory"
+  },
+  {
+    "id": "memory_long_context_09",
+    "question": "How does MemGPT handle long-context memory differently from simpler context-window extension approaches?",
+    "category": "memory"
+  },
+  {
+    "id": "memory_long_context_10",
+    "question": "Which memory designs seem most robust to distraction and irrelevant history in long-horizon agent tasks?",
+    "category": "memory"
+  },
+  {
+    "id": "hallucination_01",
+    "question": "What are the best approaches for reducing hallucination in LLM agents?",
+    "category": "hallucination"
+  },
+  {
+    "id": "hallucination_02",
+    "question": "How does retrieval-augmented generation reduce hallucination compared with parametric-only generation?",
+    "category": "hallucination"
+  },
+  {
+    "id": "hallucination_03",
+    "question": "What role does constrained decoding play in reducing hallucination in language models?",
+    "category": "hallucination"
+  },
+  {
+    "id": "hallucination_04",
+    "question": "How effective are self-correction and self-refinement strategies at reducing unsupported claims in LLM outputs?",
+    "category": "hallucination"
+  },
+  {
+    "id": "hallucination_05",
+    "question": "How does RLHF help reduce hallucinations, and where does it still fall short?",
+    "category": "hallucination"
+  },
+  {
+    "id": "hallucination_06",
+    "question": "Which recent methods are best for making LLM-agent outputs more source-grounded rather than merely fluent?",
+    "category": "hallucination"
+  },
+  {
+    "id": "hallucination_07",
+    "question": "How should an agent system decide when to retrieve more evidence instead of answering directly to avoid hallucination?",
+    "category": "hallucination"
+  },
+  {
+    "id": "hallucination_08",
+    "question": "What are the strongest current approaches for reducing hallucinations in high-stakes domains like medical or enterprise QA?",
+    "category": "hallucination"
+  },
+  {
+    "id": "hallucination_09",
+    "question": "How does chain-of-thought help or hurt hallucination reduction in LLM agents?",
+    "category": "hallucination"
+  },
+  {
+    "id": "hallucination_10",
+    "question": "What combinations of retrieval, self-critique, and decoding constraints seem most effective for hallucination control?",
+    "category": "hallucination"
+  },
+  {
+    "id": "reflexion_01",
+    "question": "How does Reflexion improve reliability in LLM agents compared with simpler retry loops?",
+    "category": "reflexion"
+  },
+  {
+    "id": "reflexion_02",
+    "question": "What is verbal reinforcement learning, and why is it useful for LLM agents?",
+    "category": "reflexion"
+  },
+  {
+    "id": "reflexion_03",
+    "question": "How do the actor, evaluator, and self-reflection components interact in Reflexion-style agents?",
+    "category": "reflexion"
+  },
+  {
+    "id": "reflexion_04",
+    "question": "What benchmark evidence suggests that Reflexion improves sequential decision making in agents?",
+    "category": "reflexion"
+  },
+  {
+    "id": "reflexion_05",
+    "question": "Why is storing self-reflection memory more useful than simply storing past trajectories?",
+    "category": "reflexion"
+  },
+  {
+    "id": "reflexion_06",
+    "question": "How does Reflexion compare with ReAct in terms of reliability and task recovery after failure?",
+    "category": "reflexion"
+  },
+  {
+    "id": "reflexion_07",
+    "question": "What kinds of evaluator signals work best for Reflexion-style learning loops?",
+    "category": "reflexion"
+  },
+  {
+    "id": "reflexion_08",
+    "question": "How should a practical agent use verbal feedback to improve retrieval and synthesis on retries?",
+    "category": "reflexion"
+  },
+  {
+    "id": "reflexion_09",
+    "question": "What did the Reflexion paper show on HotpotQA and AlfWorld, and why do those results matter?",
+    "category": "reflexion"
+  },
+  {
+    "id": "reflexion_10",
+    "question": "Which failure modes in LLM agents are most likely to benefit from Reflexion-style self-evaluation?",
+    "category": "reflexion"
+  },
+  {
+    "id": "rag_reliability_01",
+    "question": "How does retrieval-augmented generation improve reliability and faithfulness in LLM agents?",
+    "category": "rag"
+  },
+  {
+    "id": "rag_reliability_02",
+    "question": "What are the main differences between REALM, RAG-Sequence, RAG-Token, and Self-RAG?",
+    "category": "rag"
+  },
+  {
+    "id": "rag_reliability_03",
+    "question": "Why does retrieval precision matter so much for reliable RAG-based agents?",
+    "category": "rag"
+  },
+  {
+    "id": "rag_reliability_04",
+    "question": "How does Self-RAG use self-reflection to decide when retrieval is actually needed?",
+    "category": "rag"
+  },
+  {
+    "id": "rag_reliability_05",
+    "question": "What are the main sources of error propagation in RAG systems for agents?",
+    "category": "rag"
+  },
+  {
+    "id": "rag_reliability_06",
+    "question": "When is RAG more effective than pure long-context modeling for knowledge-intensive tasks?",
+    "category": "rag"
+  },
+  {
+    "id": "rag_reliability_07",
+    "question": "How do dynamic retrieval and static retrieval differ in agent reliability?",
+    "category": "rag"
+  },
+  {
+    "id": "rag_reliability_08",
+    "question": "What evidence suggests that RAG improves factual QA but can still fail without good ranking?",
+    "category": "rag"
+  },
+  {
+    "id": "rag_reliability_09",
+    "question": "How should an LLM agent combine retrieval with verification to reduce unsupported answers?",
+    "category": "rag"
+  },
+  {
+    "id": "rag_reliability_10",
+    "question": "What is the most convincing case for RAG as a hallucination-reduction method in agents?",
+    "category": "rag"
+  },
+  {
+    "id": "long_context_efficiency_01",
+    "question": "What are the best recent methods for handling long context efficiently in large language models?",
+    "category": "long_context"
+  },
+  {
+    "id": "long_context_efficiency_02",
+    "question": "How does StreamingLLM make effectively unbounded streaming inference feasible?",
+    "category": "long_context"
+  },
+  {
+    "id": "long_context_efficiency_03",
+    "question": "What problem does LongLoRA solve, and how does it extend context without full-cost long-context training?",
+    "category": "long_context"
+  },
+  {
+    "id": "long_context_efficiency_04",
+    "question": "How does LLMLingua differ from context extension methods like LongLoRA or StreamingLLM?",
+    "category": "long_context"
+  },
+  {
+    "id": "long_context_efficiency_05",
+    "question": "When should prompt compression be preferred over simply increasing context length?",
+    "category": "long_context"
+  },
+  {
+    "id": "long_context_efficiency_06",
+    "question": "Which methods are best for long-context efficiency when the bottleneck is inference latency rather than training?",
+    "category": "long_context"
+  },
+  {
+    "id": "long_context_efficiency_07",
+    "question": "What do recent long-context methods reveal about the tradeoff between context size and reasoning quality?",
+    "category": "long_context"
+  },
+  {
+    "id": "long_context_efficiency_08",
+    "question": "How should one compare streaming-cache methods, sparse-attention methods, and prompt-compression methods for long context?",
+    "category": "long_context"
+  },
+  {
+    "id": "evaluation_01",
+    "question": "How should reliability in LLM agents be evaluated beyond simple answer accuracy?",
+    "category": "evaluation"
+  },
+  {
+    "id": "evaluation_02",
+    "question": "What does RAGAS measure, and why is it useful for evaluating RAG-based agents?",
+    "category": "evaluation"
+  }
+]

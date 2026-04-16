@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+title: "NeuroAgent"
+message: "If you use this repository, please cite it using the metadata below."
+type: software
+authors:
+  - family-names: "Lohani"
+    given-names: "Abhyudaya"
+repository-code: "https://github.com/Abhyudaya01/NeuroAgent"
+abstract: >
+  NeuroAgent is a modular research-oriented LLM agent for studying how planning,
+  retrieval memory, critique, retries, and source-grounded synthesis affect
+  reliability in tool-using language model systems.
+license: "MIT"
+version: "0.1.0"
+date-released: "2026-04-16"

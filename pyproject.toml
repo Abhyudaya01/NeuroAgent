@@ -1,0 +1,22 @@
+[project]
+name = "neuro-agent"
+version = "0.1.0"
+description = "A modular research-oriented LLM agent for studying reliability, retrieval memory, critique, and source-grounded synthesis."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+  { name = "Abhyudaya Lohani" }
+]
+keywords = [
+  "llm-agents",
+  "langgraph",
+  "retrieval",
+  "research-agent",
+  "evaluation",
+  "rag",
+  "reflexion"
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

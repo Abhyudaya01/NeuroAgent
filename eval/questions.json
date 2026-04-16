@@ -1,0 +1,22 @@
+[
+  {
+    "id": "memory_long_context",
+    "question": "What are the best recent approaches for long-context memory in LLM agents?"
+  },
+  {
+    "id": "hallucination_reduction",
+    "question": "What are the best approaches for reducing hallucination in LLM agents?"
+  },
+  {
+    "id": "reflexion_reliability",
+    "question": "How does Reflexion improve reliability in LLM agents compared with simpler retry loops?"
+  },
+  {
+    "id": "rag_reliability",
+    "question": "How does retrieval-augmented generation improve reliability and faithfulness in LLM agents?"
+  },
+  {
+    "id": "long_context_efficiency",
+    "question": "What are the best recent methods for handling long context efficiently in large language models?"
+  }
+]
