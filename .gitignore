@@ -10,6 +10,7 @@ __pycache__/
 
 wandb/
 eval/results/
+eval/cache/
 
 faiss_index.index
 faiss_index.json

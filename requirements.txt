@@ -14,6 +14,6 @@ tavily-python
 e2b
 ragas
 wandb
+datasets
 pytest
 httpx
-

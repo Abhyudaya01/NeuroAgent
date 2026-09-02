@@ -66,24 +66,26 @@ def _initial_state(question: str, session_id: str) -> AgentState:
     }
 
 
-def _load_questions(path: str) -> list[dict[str, str]]:
+def _load_questions(path: str) -> list[dict[str, Any]]:
     """Load questions from JSON and normalize into id/question objects."""
 
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     if isinstance(payload, dict):
         payload = payload.get("questions", [])
 
-    normalized: list[dict[str, str]] = []
+    normalized: list[dict[str, Any]] = []
     for index, item in enumerate(payload, start=1):
         if isinstance(item, str):
             normalized.append({"id": f"q{index}", "question": item})
         elif isinstance(item, dict) and "question" in item:
-            normalized.append(
-                {
-                    "id": str(item.get("id", f"q{index}")),
-                    "question": str(item["question"]),
-                }
-            )
+            normalized_item: dict[str, Any] = {
+                "id": str(item.get("id", f"q{index}")),
+                "question": str(item["question"]),
+            }
+            for optional_key in ("answer", "reasoning_types", "wiki_links"):
+                if optional_key in item:
+                    normalized_item[optional_key] = item[optional_key]
+            normalized.append(normalized_item)
         else:
             raise ValueError("Questions file must contain strings or objects with a 'question' field.")
 
@@ -127,13 +129,39 @@ def _run_config(question: str, session_id: str, config_name: str) -> AgentState:
         return run_agent(question=question, session_id=session_id)
 
 
-def _question_summary(result: AgentState, question_row: dict[str, str]) -> dict[str, Any]:
+def _normalize_for_match(text: str) -> str:
+    """Normalize free text for simple answer-presence checks."""
+
+    return " ".join(text.lower().split())
+
+
+def _answer_present(final_report: str, expected_answer: object | None) -> bool | None:
+    """Return whether the expected answer appears in the report, when available."""
+
+    if expected_answer in (None, ""):
+        return None
+    normalized_report = _normalize_for_match(final_report)
+    if isinstance(expected_answer, list):
+        answer_parts = [str(item) for item in expected_answer if str(item).strip()]
+    else:
+        answer_parts = [str(expected_answer)]
+    normalized_answers = [
+        _normalize_for_match(answer)
+        for answer in answer_parts
+        if _normalize_for_match(answer)
+    ]
+    if not normalized_answers:
+        return None
+    return any(answer in normalized_report for answer in normalized_answers)
+
+
+def _question_summary(result: AgentState, question_row: dict[str, Any]) -> dict[str, Any]:
     """Summarize a completed run into a compact JSON-serializable record."""
 
     plan = result["plan"]
     confidences = [task["confidence"] for task in plan]
     retries = [task["retries"] for task in plan]
-    return {
+    summary = {
         "id": question_row["id"],
         "question": question_row["question"],
         "num_tasks": len(plan),
@@ -143,6 +171,14 @@ def _question_summary(result: AgentState, question_row: dict[str, str]) -> dict[
         "hallucination_retries": sum(1 for retry_count in retries if retry_count > 0),
         "final_report": result["final_report"],
     }
+    if "answer" in question_row:
+        summary["expected_answer"] = question_row["answer"]
+        summary["answer_present"] = _answer_present(result["final_report"], question_row["answer"])
+    if "reasoning_types" in question_row:
+        summary["reasoning_types"] = question_row["reasoning_types"]
+    if "wiki_links" in question_row:
+        summary["wiki_links"] = question_row["wiki_links"]
+    return summary
 
 
 def _summary_paths(summary: dict[str, Any], output_dir: Path) -> tuple[Path, Path]:

@@ -4,6 +4,12 @@ NeuroAgent is a modular research-oriented LLM agent for studying reliability in 
 
 The project is designed less like a chatbot demo and more like a small experimental platform: components are separable, ablations are supported, run traces are logged, and local retrieval memory can be toggled on or off to study its effect on groundedness and retry behavior.
 
+## Live Demo
+
+- API: [https://neuro-agent-api.onrender.com/](https://neuro-agent-api.onrender.com/)
+- Docs: [https://neuro-agent-api.onrender.com/docs](https://neuro-agent-api.onrender.com/docs)
+- Health: [https://neuro-agent-api.onrender.com/health](https://neuro-agent-api.onrender.com/health)
+
 ## Why This Project Exists
 
 Many LLM projects stop at one-shot prompting or a shallow RAG wrapper. NeuroAgent is built around a different question:
@@ -31,6 +37,7 @@ To explore that, NeuroAgent implements:
 - FastAPI deployment surface for live hosting
 - Weights & Biases logging for task-level traces and final reports
 - Evaluation scaffold for `react_baseline`, `neuro_no_memory`, and `neuro_full`
+- FRAMES benchmark preparation and failure-mode analysis utilities
 
 ## Repository Layout
 
@@ -56,6 +63,8 @@ NeuroAgent/
 ├── data/seed_docs/              # Local technical corpus for retrieval memory
 ├── eval/
 │   ├── ablation.py              # Benchmark/ablation runner
+│   ├── analyze_failures.py      # Failure-mode analysis for saved benchmark runs
+│   ├── frames.py                # FRAMES benchmark adapter
 │   ├── questions.json           # Small starter question set
 │   └── questions_50.json        # Expanded 50-question benchmark set
 ├── eval/results/                # Saved ablation outputs
@@ -201,6 +210,34 @@ python eval/ablation.py --config neuro_full --questions eval/questions_50.json
 ```
 
 Saved outputs are written to [eval/results](/Users/abhyudayalohani/Documents/New%20project/NeuroAgent/eval/results).
+
+### FRAMES benchmark path
+
+Prepare a 50-question FRAMES subset:
+
+```bash
+python eval/frames.py --limit 50 --output eval/frames_questions_50.json
+```
+
+Then run the same ablation configs:
+
+```bash
+python eval/ablation.py --config react_baseline --questions eval/frames_questions_50.json
+python eval/ablation.py --config neuro_no_memory --questions eval/frames_questions_50.json
+python eval/ablation.py --config neuro_full --questions eval/frames_questions_50.json
+```
+
+Analyze failure modes across saved runs:
+
+```bash
+python eval/analyze_failures.py \
+  eval/results/react_baseline_latest.json \
+  eval/results/neuro_no_memory_latest.json \
+  eval/results/neuro_full_latest.json \
+  --output eval/results/frames_failure_analysis_latest.json
+```
+
+See [FRAMES_EVALUATION.md](/Users/abhyudayalohani/Documents/New%20project/NeuroAgent/docs/FRAMES_EVALUATION.md) for the methodology and caveats.
 
 Current evaluation notes and reproducibility guidance are documented in [REPRODUCIBILITY.md](/Users/abhyudayalohani/Documents/New%20project/NeuroAgent/docs/REPRODUCIBILITY.md).
 
