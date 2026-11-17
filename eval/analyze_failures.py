@@ -16,12 +16,13 @@ def _load_summary(path: Path) -> dict[str, Any]:
 
 
 def _premature_terminations(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Find runs that ended with missing task outputs."""
+    """Find runs with explicit evidence that execution stopped before the plan ended."""
 
     return [
         result
         for result in results
-        if int(result.get("completed_tasks", 0)) < int(result.get("num_tasks", 0))
+        if result.get("current_task_index") is not None
+        and int(result["current_task_index"]) < int(result.get("num_tasks", 0))
     ]
 
 
@@ -31,7 +32,10 @@ def _critic_miscalibrations(results: list[dict[str, Any]]) -> list[dict[str, Any
     flagged: list[dict[str, Any]] = []
     for result in results:
         answer_present = result.get("answer_present")
-        confidence = float(result.get("final_confidence", 0.0))
+        confidence = result.get("critic_confidence")
+        if confidence is None:
+            continue
+        confidence = float(confidence)
         if answer_present is False and confidence >= 0.7:
             flagged.append({**result, "miscalibration_type": "high_confidence_missing_gold_answer"})
         elif answer_present is True and confidence < 0.5:
@@ -42,7 +46,10 @@ def _critic_miscalibrations(results: list[dict[str, Any]]) -> list[dict[str, Any
 def _num_gold_answer_cases(results: list[dict[str, Any]]) -> int:
     """Count results with enough metadata for answer-based calibration checks."""
 
-    return sum(1 for result in results if result.get("answer_present") is not None)
+    return sum(
+        1 for result in results
+        if result.get("answer_present") is not None and result.get("critic_confidence") is not None
+    )
 
 
 def analyze(paths: list[Path]) -> dict[str, Any]:
@@ -58,6 +65,12 @@ def analyze(paths: list[Path]) -> dict[str, Any]:
         premature = _premature_terminations(results)
         miscalibrated = _critic_miscalibrations(results)
         gold_answer_cases = _num_gold_answer_cases(results)
+        termination_cases = sum(row.get("current_task_index") is not None for row in results)
+        incomplete_cases = sum(
+            row.get("num_tasks") is not None
+            and int(row.get("output_tasks", row.get("completed_tasks", 0))) < int(row["num_tasks"])
+            for row in results
+        )
         all_premature.extend({**item, "config": run.get("config"), "run_file": str(path)} for item in premature)
         all_miscalibrated.extend(
             {**item, "config": run.get("config"), "run_file": str(path)}
@@ -72,7 +85,14 @@ def analyze(paths: list[Path]) -> dict[str, Any]:
                 "num_questions": run.get("num_questions", len(results)),
                 "avg_final_confidence": run.get("avg_final_confidence"),
                 "avg_total_retries": run.get("avg_total_retries"),
-                "premature_termination_rate": len(premature) / len(results) if results else 0.0,
+                "premature_termination_rate": len(premature) / termination_cases if termination_cases else None,
+                "termination_observed_cases": termination_cases,
+                "incomplete_output_rate": incomplete_cases / len(results) if results else None,
+                "unfinished_task_rate": sum(
+                    row.get("num_tasks") is not None and int(row.get("completed_tasks", 0)) < int(row["num_tasks"])
+                    for row in results
+                ) / len(results) if results else None,
+                "operational_error_rate": sum(row.get("status") == "error" for row in results) / len(results) if results else None,
                 "critic_miscalibration_rate": (
                     len(miscalibrated) / gold_answer_cases if gold_answer_cases else None
                 ),
@@ -106,7 +126,7 @@ def analyze(paths: list[Path]) -> dict[str, Any]:
             {
                 "config": item.get("config"),
                 "id": item.get("id"),
-                "final_confidence": item.get("final_confidence"),
+                "critic_confidence": item.get("critic_confidence"),
                 "answer_present": item.get("answer_present"),
                 "miscalibration_type": item.get("miscalibration_type"),
             }

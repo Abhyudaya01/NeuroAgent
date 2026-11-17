@@ -43,7 +43,9 @@ def report_node(state: AgentState) -> AgentState:
             continue
         sections.append(_task_section(task))
 
-    completed_tasks = sum(1 for task in state["plan"] if task["result"].strip())
+    completed_tasks = sum(
+        1 for task in state["plan"] if task["status"] == "completed" and task["result"].strip()
+    )
     total_tasks = len(state["plan"])
     sources = _unique_sources(state["plan"])
 

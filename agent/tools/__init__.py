@@ -20,6 +20,10 @@ class ToolResult:
     sources: list[str] = field(default_factory=list)
     raw_confidence: float = 0.0
     tool_name: str = ""
+    source_content: dict[str, str] = field(default_factory=dict)
+    resolved_answer: str | None = None
+    evidence_gap: str = ""
+    missing_dependency_ids: list[int] = field(default_factory=list)
 
 
 __all__ = ["ToolResult"]

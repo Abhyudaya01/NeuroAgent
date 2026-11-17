@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from langchain_core.exceptions import OutputParserException
@@ -18,6 +18,13 @@ from agent.nodes.report import report_node
 from agent.state import AgentState, MAX_ITERATIONS
 from agent.tools import ToolResult
 from agent.tools.search import run_web_search
+
+
+@pytest.fixture(autouse=True)
+def isolate_research_resolution():
+    """Keep routing tests offline; evidence resolution has its own integration tests."""
+    with patch("agent.nodes.executor.resolve_evidence", side_effect=lambda result, *args: result):
+        yield
 
 
 def make_state(
@@ -459,7 +466,7 @@ def test_executor_node_routes_analysis_tasks_to_synthesis() -> None:
     plan[1]["dependencies"] = [1]
     state = make_state(plan=plan, current_task_index=1, tool_history=[], iteration_count=3)
 
-    def _fake_run_synthesis(task: dict, plan: list[dict], current_index: int) -> ToolResult:
+    def _fake_run_synthesis(task: dict, plan: list[dict], current_index: int, research_question: str, critic_feedback: str) -> ToolResult:
         assert task["description"] == "Analyze and compare the findings."
         assert "retrieval plus summarization" in plan[0]["result"]
         assert current_index == 1
@@ -509,7 +516,7 @@ def test_executor_node_supports_explicit_synthesis_tool() -> None:
     plan[1]["dependencies"] = [1]
     state = make_state(plan=plan, current_task_index=1)
 
-    def _fake_run_synthesis(task: dict, plan: list[dict], current_index: int) -> ToolResult:
+    def _fake_run_synthesis(task: dict, plan: list[dict], current_index: int, research_question: str, critic_feedback: str) -> ToolResult:
         assert task["tool"] == "synthesis"
         assert "Found approaches using retrieval plus summarization." in plan[0]["result"]
         return ToolResult(
@@ -566,55 +573,43 @@ def test_synthesis_prompt_includes_real_sources_and_inline_citation_instruction(
     ]
 
 
-def test_executor_node_injects_critic_feedback_into_retry_fallback_prompt() -> None:
-    """Executor should use critic feedback to deepen non-synthesis fallback analysis on retries."""
+def test_executor_generates_and_executes_calculation_with_retry_feedback() -> None:
+    """A prose calculation must execute computed Python using supplied inputs."""
+    from agent.nodes.executor import GeneratedCode
 
-    plan = [
-        make_plan_task(
-            task_id=1,
-            description="Search for recent papers.",
-            tool="web_search",
-            status="completed",
-            result="Found retrieval-augmented generation and self-correction loops.",
-            sources=["https://example.com/a"],
-            confidence=0.9,
-        ),
-        make_plan_task(
-            task_id=2,
-            description="Write a plain-language Python-style debugging plan for the evidence pipeline.",
-            tool="code_interpreter",
-            status="retrying",
-            retries=1,
-        ),
-    ]
-    plan[1]["dependencies"] = [1]
-    state = make_state(
-        plan=plan,
-        current_task_index=1,
-    )
-    state["critic_feedback"] = "The prior comparison was too vague and lacked concrete examples."
+    prior = make_plan_task(task_id=1, result="The city was founded in 1880; the patent dates to 1978.",
+                           sources=["https://example.com/history"], confidence=0.9)
+    calculation = make_plan_task(task_id=2, description="Calculate the years between the founding and patent.",
+                                tool="code_interpreter", retries=1)
+    calculation["dependencies"] = [1]
+    state = make_state(plan=[prior, calculation], current_task_index=1)
+    state["critic_feedback"] = "Compute the exact difference."
+    model = Mock()
+    model.with_structured_output.return_value.invoke.return_value = GeneratedCode(code="print(1978 - 1880)")
 
-    def _fake_run_code(code: str) -> ToolResult:
-        assert "The previous analysis was rejected because:" in code
-        assert "too vague and lacked concrete examples" in code
-        assert "Structured conclusions:" in code
-        return ToolResult(
-            content="A deeper structured comparison with examples from the prior evidence.",
-            sources=[],
-            raw_confidence=1.0,
-            tool_name="code_interpreter",
-        )
+    def execute_calculation(code):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        output = StringIO()
+        with redirect_stdout(output):
+            exec(code, {"__builtins__": {"print": print}})
+        return ToolResult(content=output.getvalue(), raw_confidence=1, tool_name="code_interpreter")
 
-    with patch("agent.nodes.executor.run_code", side_effect=_fake_run_code) as run_code_mock:
-        updated_state = executor_node(state)
-
-    assert updated_state["plan"][1]["confidence"] == 0.5
-    assert updated_state["plan"][1]["sources"] == ["https://example.com/a"]
-    run_code_mock.assert_called_once()
+    with patch("agent.nodes.executor.ChatOpenAI", return_value=model), patch(
+        "agent.nodes.executor.run_code", side_effect=execute_calculation
+    ):
+        result = executor_node(state)
+    assert result["plan"][1]["result"].strip() == "98"
+    assert result["plan"][1]["sources"] == ["https://example.com/history"]
+    assert result["plan"][1]["confidence"] == 0.8
+    messages = model.with_structured_output.return_value.invoke.call_args.args[0]
+    assert "1978" in messages[1].content
+    assert "Compute the exact difference" in messages[1].content
+    assert "actually computes" in messages[0].content
 
 
-def test_executor_node_keeps_full_confidence_for_real_python_code() -> None:
-    """Executor should preserve full confidence for explicit Python code tasks."""
+def test_executor_node_preserves_tool_confidence_for_real_python_code() -> None:
+    """Executor must preserve the sandbox result confidence."""
 
     python_task = make_plan_task(
         description="print('hello from real python')",
@@ -633,7 +628,7 @@ def test_executor_node_keeps_full_confidence_for_real_python_code() -> None:
     ) as run_code_mock:
         updated_state = executor_node(state)
 
-    assert updated_state["plan"][0]["confidence"] == 1.0
+    assert updated_state["plan"][0]["confidence"] == 0.2
     assert updated_state["plan"][0]["status"] == "completed"
     run_code_mock.assert_called_once_with("print('hello from real python')")
 
@@ -889,7 +884,7 @@ def test_critic_node_advances_to_next_task_when_score_is_high() -> None:
     assert updated_state["should_retry"] is False
     assert updated_state["current_task_index"] == 1
     assert updated_state["plan"][0]["status"] == "completed"
-    assert updated_state["tool_history"] == ["web_search"]
+    assert updated_state["tool_history"] == []
     assert updated_state["iteration_count"] == 4
 
 
@@ -975,3 +970,126 @@ def test_report_node_builds_clean_summary_with_sources() -> None:
     assert "Task Findings:" in updated_state["final_report"]
     assert "All Sources:" in updated_state["final_report"]
     assert updated_state["final_report"].count("https://example.com/b") == 1
+
+
+def test_critic_preserves_failed_status_after_retry_budget_exhausted():
+    """Empty tool output cannot become completed merely by exhausting retries."""
+    from agent.state import MAX_RETRIES
+
+    state = make_state(
+        plan=[make_plan_task(result="", confidence=0, status="failed", retries=MAX_RETRIES)],
+        current_task_index=0,
+        tool_history=["web_search"],
+    )
+    with patch("agent.nodes.critic.load_dotenv"), patch(
+        "agent.nodes.critic.os.getenv", return_value="test-key"
+    ), patch("agent.nodes.critic._build_llm"), patch(
+        "agent.nodes.critic._invoke_critic", return_value=make_critic_output(0.2)
+    ), patch("agent.nodes.critic._log_critic_evaluation"):
+        result = critic_node(state)
+    assert result["plan"][0]["status"] == "failed"
+    assert result["plan"][0]["critic_score"] == 0.2
+    assert result["current_task_index"] == 1
+    assert result["tool_history"] == []
+
+
+def test_web_retry_uses_critic_feedback_to_change_query():
+    plan = [make_plan_task(description="Find the mother's maiden name", retries=1)]
+    state = make_state(plan=plan, current_task_index=0)
+    state["critic_feedback"] = "Identify Garfield's mother"
+    with patch(
+        "agent.nodes.executor._reformulate_retrieval_query", return_value="Eliza Ballou Garfield maiden name"
+    ) as reformulate, patch(
+        "agent.nodes.executor.run_web_search", return_value=ToolResult(content="Ballou", raw_confidence=0.8)
+    ) as search:
+        executor_node(state)
+    reformulate.assert_called_once_with("Find the mother's maiden name", "Identify Garfield's mother")
+    search.assert_called_once_with("Eliza Ballou Garfield maiden name", fetch_sources=True)
+
+
+def test_critic_accepts_missing_model_retry_flag():
+    """Retry decisions are computed locally even if the model omits its flag."""
+    output = CriticOutput(overall_score=0.2, verbal_feedback="Missing evidence")
+    assert output.should_retry is False
+    state = make_state(plan=[make_plan_task(result="Thin answer", confidence=0.2)], current_task_index=0)
+    with patch("agent.nodes.critic.load_dotenv"), patch(
+        "agent.nodes.critic.os.getenv", return_value="test-key"
+    ), patch("agent.nodes.critic._build_llm"), patch(
+        "agent.nodes.critic._invoke_critic", return_value=output
+    ), patch("agent.nodes.critic._log_critic_evaluation"):
+        result = critic_node(state)
+    assert result["should_retry"] is True
+
+
+def test_dependent_search_resolves_query_from_prior_facts():
+    from agent.nodes.executor import _reformulate_retrieval_query
+    from langchain_core.messages import AIMessage
+
+    prior = make_plan_task(task_id=1, result="The second assassinated president was James A. Garfield.")
+    future = make_plan_task(task_id=3, result="Future result must stay unavailable.")
+    task = make_plan_task(task_id=2, description="Find his mother's maiden name.")
+    task["dependencies"] = [1, 3]
+    state = make_state(plan=[prior, task, future], current_task_index=1)
+    state["research_question"] = "What was the maiden name of the second assassinated president's mother?"
+    model = Mock()
+    model.invoke.return_value = AIMessage(content="James A. Garfield mother maiden name")
+    with patch("agent.nodes.executor.ChatOpenAI", return_value=model), patch(
+        "agent.nodes.executor.run_web_search", return_value=ToolResult(content="Eliza Ballou", raw_confidence=0.8)
+    ) as search:
+        executor_node(state)
+    prompt = model.invoke.call_args.args[0][0].content
+    assert "James A. Garfield" in prompt
+    assert "second assassinated" in prompt
+    assert "Future result" not in prompt
+    search.assert_called_once_with("James A. Garfield mother maiden name")
+
+
+def test_missing_calculation_inputs_do_not_execute_template():
+    from agent.nodes.executor import GeneratedCode
+
+    model = Mock()
+    model.with_structured_output.return_value.invoke.return_value = GeneratedCode(
+        code="", missing_evidence="The founding year is absent."
+    )
+    state = make_state(plan=[make_plan_task(description="Calculate the number of years", tool="code_interpreter")])
+    with patch("agent.nodes.executor.ChatOpenAI", return_value=model), patch("agent.nodes.executor.run_code") as sandbox:
+        result = executor_node(state)
+    sandbox.assert_not_called()
+    assert result["plan"][0]["status"] == "failed"
+    assert "founding year is absent" in result["plan"][0]["result"]
+    assert result["plan"][0]["confidence"] == 0
+
+
+def test_sandbox_error_is_preserved_as_failed_task():
+    state = make_state(plan=[make_plan_task(description="print(1 / 0)", tool="code_interpreter")])
+    with patch("agent.nodes.executor.run_code", return_value=ToolResult(
+        content="ZeroDivisionError", raw_confidence=0, tool_name="code_interpreter"
+    )):
+        result = executor_node(state)
+    assert result["plan"][0]["status"] == "failed"
+    assert result["plan"][0]["confidence"] == 0
+    assert result["error"]
+
+
+def test_synthesis_uses_original_constraints_and_retry_feedback():
+    from agent.nodes.executor import _build_synthesis_prompt
+
+    task = make_plan_task(description="Compute the requested difference", tool="synthesis")
+    prompt, _ = _build_synthesis_prompt(task, [], "How many years before 1914?", "Use the correct start date")
+    assert "How many years before 1914?" in prompt
+    assert "Use the correct start date" in prompt
+    assert "formula" in prompt
+    assert "hierarchical memory" not in prompt
+
+
+def test_critic_receives_original_question_and_dependency_evidence():
+    from agent.nodes.critic import _invoke_critic
+
+    model = Mock()
+    model.with_structured_output.return_value.invoke.return_value = make_critic_output(0.2)
+    _invoke_critic(model, "Find her mother's name", "Nancy", [],
+                   research_question="Identify the 15th first lady's mother", dependency_evidence="The first lady is Harriet Lane")
+    messages = model.with_structured_output.return_value.invoke.call_args.args[0]
+    assert "15th first lady" in messages[1].content
+    assert "Harriet Lane" in messages[1].content
+    assert "at or below 0.4" in messages[0].content

@@ -121,7 +121,11 @@ def run_retrieval(query: str, index_path: str = "faiss_index", top_k: int = 3) -
 
         top_score = float(scores[0][0]) if len(scores[0]) > 0 else 0.0
         confidence = max(0.0, min(1.0, top_score))
+        source_content: dict[str, str] = {}
+        for source, chunk in zip(selected_sources, selected_chunks):
+            source_content[source] = source_content.get(source, "") + "\n" + chunk
         return ToolResult(
+            source_content=source_content,
             content="\n\n".join(selected_chunks),
             sources=selected_sources,
             raw_confidence=confidence,

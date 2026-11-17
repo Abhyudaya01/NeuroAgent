@@ -5,7 +5,7 @@ constants used to coordinate planning, tool use, critique, and final
 report synthesis across agent nodes.
 """
 
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 
 CRITIC_THRESHOLD = 0.7
@@ -35,6 +35,12 @@ class PlanTask(TypedDict):
     result: str
     sources: list[str]
     confidence: float
+    critic_score: NotRequired[float]
+    resolved_answer: NotRequired[str]
+    evidence_gap: NotRequired[str]
+    evidence_sources: NotRequired[dict[str, str]]
+    supplemental_evidence: NotRequired[str]
+    dependency_rechecks: NotRequired[int]
     retries: int
 
 
@@ -59,4 +65,5 @@ class AgentState(TypedDict):
     final_report: str
     wandb_task_rows: list[dict[str, object]]
     error: str | None
+    dependency_to_retry: NotRequired[int | None]
     iteration_count: int

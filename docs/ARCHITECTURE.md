@@ -35,6 +35,8 @@ The executor:
 - selects the task’s tool
 - runs the appropriate tool implementation
 - stores the result, sources, confidence, and status
+- resolves research output into an explicit answer with source passages or an evidence gap
+- blocks dependent work until its prerequisite facts are resolved
 
 Important retry-aware behaviors:
 - retrieval retries rewrite the query using the critic’s verbal feedback
@@ -50,6 +52,11 @@ The critic evaluates each task output on:
 - specificity
 
 If the result is weak and retry budget remains, the graph loops back to the executor.
+An explicit evidence gap forces a zero score. A prerequisite can receive one bounded
+recheck when dependent work discovers a missing input. Transitive dependent results
+are invalidated, while unrelated completed work is preserved. A calculation can
+search for an additional fact on its first own retry. The global transition budget
+routes to a partial report when exhausted.
 
 ### Report
 
@@ -69,7 +76,9 @@ The report node assembles:
 - uses Tavily
 - filters weak domains
 - prefers stronger academic sources
-- returns structured evidence blocks rather than a synthesized paragraph
+- returns structured evidence blocks
+- can extract relevant passages from the top two source pages on a first retry
+- retains short factual passages during that retry for evidence resolution
 
 ### Retrieval
 
@@ -81,12 +90,11 @@ The report node assembles:
 
 ### Synthesis
 
-The synthesis path is model-driven rather than code-driven.
-
-It takes prior task findings and their actual sources, then asks GPT-4o to:
-- name approaches
-- compare them concretely
-- recommend a best answer with cited evidence
+Synthesis uses prior findings, original question constraints, retry feedback, and
+actual source identifiers to answer the current subtask. It requests evidenced
+inputs and a formula for calculations, and an explicit missing fact when needed.
+The original question supplies context without requiring every intermediate step
+to produce its final answer.
 
 ### Code Interpreter
 
@@ -114,3 +122,5 @@ The architecture was designed to support ablations:
 - full critique + memory behavior
 
 That is one of the key reasons the system is split into clean nodes rather than flattened into one chained prompt.
+
+Evidence-gate implementation details, validation results, and grading corrections are recorded in [EVIDENCE_REPAIR.md](EVIDENCE_REPAIR.md).

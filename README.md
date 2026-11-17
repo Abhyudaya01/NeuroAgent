@@ -237,6 +237,8 @@ python eval/analyze_failures.py \
   --output eval/results/frames_failure_analysis_latest.json
 ```
 
+The completed 50-question comparison, measured costs, and limitations are documented in [FRAMES_RESULTS.md](docs/FRAMES_RESULTS.md). The quotation-backed grading audit is recorded in [FRAMES_REAUDIT.md](docs/FRAMES_REAUDIT.md). A fresh ten-question comparison of the revised agent is recorded in [FRESH_EVALUATION.md](docs/FRESH_EVALUATION.md). The subsequent execution fixes and small validation runs are recorded in [QUALITY_FOLLOWUP.md](docs/QUALITY_FOLLOWUP.md). Evidence gates, prerequisite repair, and a grading correction are documented in [EVIDENCE_REPAIR.md](docs/EVIDENCE_REPAIR.md).
+
 See [FRAMES_EVALUATION.md](/Users/abhyudayalohani/Documents/New%20project/NeuroAgent/docs/FRAMES_EVALUATION.md) for the methodology and caveats.
 
 Current evaluation notes and reproducibility guidance are documented in [REPRODUCIBILITY.md](/Users/abhyudayalohani/Documents/New%20project/NeuroAgent/docs/REPRODUCIBILITY.md).

@@ -20,6 +20,8 @@ from agent.state import AgentState, MAX_ITERATIONS
 def route_after_critic(state: AgentState) -> Literal["executor", "report"]:
     """Route execution after the critic evaluates the current sub-task."""
 
+    if state["iteration_count"] >= MAX_ITERATIONS - 2:
+        return "report"
     if state["should_retry"]:
         return "executor"
     if state["current_task_index"] < len(state["plan"]):
@@ -119,7 +121,7 @@ def run_agent(question: str, session_id: str) -> AgentState:
         "error": None,
         "iteration_count": 0,
     }
-    final_state = graph.invoke(initial_state, {"recursion_limit": MAX_ITERATIONS})
+    final_state = graph.invoke(initial_state, {"recursion_limit": MAX_ITERATIONS + 5})
 
     if wandb.run is not None:
         plan = final_state["plan"]

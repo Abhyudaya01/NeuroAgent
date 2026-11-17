@@ -78,7 +78,7 @@ def _domain(url: str) -> str:
     return urlparse(url).netloc.lower()
 
 
-def _is_allowed_result(result: dict) -> bool:
+def _is_allowed_result(result: dict, min_chars: int = MIN_FINDING_CHARS) -> bool:
     """Return whether a Tavily result should be kept for research use."""
 
     url = result.get("url", "")
@@ -86,7 +86,7 @@ def _is_allowed_result(result: dict) -> bool:
         return False
     if _domain(url) in BLOCKED_DOMAINS:
         return False
-    return len(_best_finding_text(result)) >= MIN_FINDING_CHARS
+    return len(_best_finding_text(result)) >= min_chars
 
 
 def _best_finding_text(result: dict) -> str:
@@ -141,7 +141,7 @@ def _format_result(result: dict) -> str:
     return f"## {title}\nURL: {url}\nKey finding: {content.strip()}\n"
 
 
-def run_web_search(query: str) -> ToolResult:
+def run_web_search(query: str, *, fetch_sources: bool = False) -> ToolResult:
     """Run a Tavily web search for the supplied query.
 
     On success, the returned content includes structured blocks for the
@@ -163,13 +163,30 @@ def run_web_search(query: str) -> ToolResult:
             include_answer=True,
         )
         results = response.get("results", [])
-        filtered_results = [result for result in results if _is_allowed_result(result)]
+        filtered_results = [
+            result for result in results
+            if _is_allowed_result(result, min_chars=1 if fetch_sources else MIN_FINDING_CHARS)
+        ]
         ranked_results = sorted(
             filtered_results,
             key=_result_weight,
             reverse=True,
         )[:3]
 
+        if fetch_sources and ranked_results:
+            urls = [result["url"] for result in ranked_results[:2] if result.get("url")]
+            try:
+                extracted = client.extract(
+                    urls=urls, query=query, chunks_per_source=3,
+                    format="markdown", extract_depth="basic", timeout=15,
+                )
+                passages = {item["url"]: item.get("raw_content", "") for item in extracted.get("results", [])}
+                for result in ranked_results:
+                    if passages.get(result.get("url")):
+                        result["content"] = _best_finding_text(result) + "\n\n" + passages[result["url"]]
+            except Exception:
+                # Keep search evidence available if page extraction fails.
+                pass
         formatted_results = [_format_result(result) for result in ranked_results]
         sources = [result.get("url", "") for result in ranked_results if result.get("url")]
         trust_scores = [_domain_trust_score(_domain(result.get("url", ""))) for result in ranked_results]
@@ -178,6 +195,7 @@ def run_web_search(query: str) -> ToolResult:
         return ToolResult(
             content="\n".join(formatted_results).strip(),
             sources=sources,
+            source_content={result.get("url", ""): _format_result(result) for result in ranked_results if result.get("url")},
             raw_confidence=raw_confidence,
             tool_name="web_search",
         )
